@@ -21,6 +21,12 @@ class PolymarketTrackerGUI(ctk.CTk):
         self.THE_GRAPH_API_KEY = ""
         self.SUBGRAPH_ID = "HLBkXYoNpRfWoTGzGPBvpxzVWzefwDzBvKvKjWN9fBZ"
 
+        # Polymarket API configuration (optional, for enhanced data)
+        self.POLYMARKET_API_KEY = ""
+        self.POLYMARKET_API_SECRET = ""
+        self.POLYMARKET_PASSPHRASE = ""
+        self.POLYMARKET_ADDRESS = ""
+
         # Data storage
         self.traders_data = []
         self.is_loading = False
@@ -120,6 +126,54 @@ class PolymarketTrackerGUI(ctk.CTk):
         # Status label
         self.status_label = ctk.CTkLabel(filters_frame, text="Loading...", font=ctk.CTkFont(size=14))
         self.status_label.grid(row=0, column=3, padx=30, pady=(10, 10))
+
+        # Polymarket API Credentials (optional, for enhanced data)
+        separator = ctk.CTkLabel(filters_frame, text="──────────────────────────────────", font=ctk.CTkFont(size=12))
+        separator.grid(row=2, column=0, columnspan=4, pady=(10, 0))
+
+        pm_api_label = ctk.CTkLabel(filters_frame, text="Polymarket API Key:", font=ctk.CTkFont(size=12))
+        pm_api_label.grid(row=3, column=0, padx=10, pady=(10, 0))
+        self.pm_api_key_var = tk.StringVar(value=self.POLYMARKET_API_KEY)
+        self.pm_api_key_entry = ctk.CTkEntry(
+            filters_frame, textvariable=self.pm_api_key_var, show="•", width=180, placeholder_text="Optional"
+        )
+        self.pm_api_key_entry.grid(row=4, column=0, padx=10, pady=(5, 10))
+
+        pm_secret_label = ctk.CTkLabel(filters_frame, text="API Secret:", font=ctk.CTkFont(size=12))
+        pm_secret_label.grid(row=3, column=1, padx=10, pady=(10, 0))
+        self.pm_secret_var = tk.StringVar(value=self.POLYMARKET_API_SECRET)
+        self.pm_secret_entry = ctk.CTkEntry(
+            filters_frame, textvariable=self.pm_secret_var, show="•", width=180
+        )
+        self.pm_secret_entry.grid(row=4, column=1, padx=10, pady=(5, 10))
+
+        pm_pass_label = ctk.CTkLabel(filters_frame, text="Passphrase:", font=ctk.CTkFont(size=12))
+        pm_pass_label.grid(row=3, column=2, padx=10, pady=(10, 0))
+        self.pm_passphrase_var = tk.StringVar(value=self.POLYMARKET_PASSPHRASE)
+        self.pm_passphrase_entry = ctk.CTkEntry(
+            filters_frame, textvariable=self.pm_passphrase_var, show="•", width=120
+        )
+        self.pm_passphrase_entry.grid(row=4, column=2, padx=10, pady=(5, 10))
+
+        pm_address_label = ctk.CTkLabel(filters_frame, text="Wallet Address:", font=ctk.CTkFont(size=12))
+        pm_address_label.grid(row=3, column=3, padx=10, pady=(10, 0))
+        self.pm_address_var = tk.StringVar(value=self.POLYMARKET_ADDRESS)
+        self.pm_address_entry = ctk.CTkEntry(
+            filters_frame, textvariable=self.pm_address_var, width=260, placeholder_text="Optional"
+        )
+        self.pm_address_entry.grid(row=4, column=3, padx=10, pady=(5, 10))
+
+        # Save Polymarket credentials callback
+        def on_pm_creds_change(*args):
+            self.POLYMARKET_API_KEY = self.pm_api_key_var.get().strip()
+            self.POLYMARKET_API_SECRET = self.pm_secret_var.get().strip()
+            self.POLYMARKET_PASSPHRASE = self.pm_passphrase_var.get().strip()
+            self.POLYMARKET_ADDRESS = self.pm_address_var.get().strip()
+
+        self.pm_api_key_var.trace_add("write", on_pm_creds_change)
+        self.pm_secret_var.trace_add("write", on_pm_creds_change)
+        self.pm_passphrase_var.trace_add("write", on_pm_creds_change)
+        self.pm_address_var.trace_add("write", on_pm_creds_change)
 
         # Main table frame
         table_frame = ctk.CTkFrame(self)
@@ -394,6 +448,58 @@ class PolymarketTrackerGUI(ctk.CTk):
             return response.json()
         except Exception as e:
             print(f"Query error: {e}")
+            return None
+
+    def get_polymarket_markets(self):
+        """Get all markets from Polymarket Gamma API (public, no auth required)"""
+        try:
+            url = "https://gamma-api.polymarket.com/markets"
+            params = {"limit": 100, "active": True}
+            response = requests.get(url, params=params)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            print(f"Gamma API error: {e}")
+            return None
+
+    def get_polymarket_user_positions(self, wallet_address):
+        """Get user positions from Polymarket API (requires API credentials)"""
+        # This endpoint requires authentication
+        # You need to create API credentials via L1 authentication first
+        try:
+            if not all([self.POLYMARKET_API_KEY, self.POLYMARKET_API_SECRET,
+                       self.POLYMARKET_PASSPHRASE, self.POLYMARKET_ADDRESS]):
+                return None
+
+            import time
+            import hmac
+            import hashlib
+
+            timestamp = str(int(time.time() * 1000))
+            path = f"/positions?user={wallet_address}"
+            message = timestamp + "GET" + path + ""
+            signature = hmac.new(
+                self.POLYMARKET_API_SECRET.encode(),
+                message.encode(),
+                hashlib.sha256
+            ).hexdigest()
+
+            headers = {
+                "POLY_ADDRESS": self.POLYMARKET_ADDRESS,
+                "POLY_SIGNATURE": signature,
+                "POLY_TIMESTAMP": timestamp,
+                "POLY_API_KEY": self.POLYMARKET_API_KEY,
+                "POLY_PASSPHRASE": self.POLYMARKET_PASSPHRASE,
+            }
+
+            url = f"https://clob.polymarket.com{path}"
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            print(f"Polymarket API error: {e}")
             return None
 
     def load_top_traders(self):
