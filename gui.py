@@ -18,7 +18,8 @@ class PolymarketTrackerGUI(ctk.CTk):
         self.geometry("1200x800")
 
         # API configuration
-        self.THE_GRAPH_API_KEY = ""
+        self.THE_GRAPH_API_KEY = "server_c41df29fa13199722517ff401ade8105"
+        self.THE_GRAPH_GATEWAY_URL = "https://gateway.thegraph.com/api"
         self.SUBGRAPH_ID = "HLBkXYoNpRfWoTGzGPBvpxzVWzefwDzBvKvKjWN9fBZ"
 
         # Polymarket API configuration (optional, for enhanced data)
@@ -66,15 +67,37 @@ class PolymarketTrackerGUI(ctk.CTk):
             textvariable=self.api_key_var,
             show="•",
             width=300,
-            placeholder_text="Get free key from thegraph.com/explorer/dashboard"
+            placeholder_text="Get from thegraph.com or thegraph.market"
         )
         self.api_key_entry.grid(row=1, column=1, padx=10, pady=(5, 10))
+
+        # The Graph Gateway URL
+        gateway_label = ctk.CTkLabel(
+            header_frame,
+            text="Gateway URL:",
+            font=ctk.CTkFont(size=14)
+        )
+        gateway_label.grid(row=0, column=2, padx=10, pady=(10, 0))
+
+        self.gateway_var = tk.StringVar(value=self.THE_GRAPH_GATEWAY_URL)
+        self.gateway_entry = ctk.CTkEntry(
+            header_frame,
+            textvariable=self.gateway_var,
+            width=400,
+            placeholder_text="https://gateway.thegraph.com/api"
+        )
+        self.gateway_entry.grid(row=1, column=2, padx=10, pady=(5, 10))
 
         # Save API Key callback
         def on_api_key_change(*args):
             self.THE_GRAPH_API_KEY = self.api_key_var.get().strip()
 
+        # Save Gateway URL callback
+        def on_gateway_change(*args):
+            self.THE_GRAPH_GATEWAY_URL = self.gateway_var.get().strip()
+
         self.api_key_var.trace_add("write", on_api_key_change)
+        self.gateway_var.trace_add("write", on_gateway_change)
 
         # Refresh button
         self.refresh_btn = ctk.CTkButton(
@@ -83,7 +106,7 @@ class PolymarketTrackerGUI(ctk.CTk):
             command=self.refresh_data,
             font=ctk.CTkFont(size=14)
         )
-        self.refresh_btn.grid(row=0, column=2, padx=20, pady=10, rowspan=2, sticky="e")
+        self.refresh_btn.grid(row=0, column=3, padx=20, pady=10, rowspan=2, sticky="e")
 
         # Filters frame
         filters_frame = ctk.CTkFrame(self)
@@ -436,14 +459,18 @@ class PolymarketTrackerGUI(ctk.CTk):
     def query_subgraph(self, query):
         """Query the Polymarket subgraph"""
         try:
-            # Get latest value from input field in case tracing missed it
+            # Get latest values from input fields in case tracing missed it
             self.THE_GRAPH_API_KEY = self.api_key_var.get().strip()
+            self.THE_GRAPH_GATEWAY_URL = self.gateway_var.get().strip()
 
             if not self.THE_GRAPH_API_KEY:
                 print("Error: The Graph API Key is not set")
                 return None
 
-            url = f"https://gateway.thegraph.com/api/{self.THE_GRAPH_API_KEY}/subgraphs/id/{self.SUBGRAPH_ID}"
+            if not self.THE_GRAPH_GATEWAY_URL.endswith('/api'):
+                self.THE_GRAPH_GATEWAY_URL = self.THE_GRAPH_GATEWAY_URL.rstrip('/') + '/api'
+
+            url = f"{self.THE_GRAPH_GATEWAY_URL}/{self.THE_GRAPH_API_KEY}/subgraphs/id/{self.SUBGRAPH_ID}"
             response = requests.post(url, json={'query': query})
             return response.json()
         except Exception as e:
