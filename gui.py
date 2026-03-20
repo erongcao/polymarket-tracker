@@ -382,6 +382,9 @@ class PolymarketTrackerGUI(ctk.CTk):
     def query_subgraph(self, query):
         """Query the Polymarket subgraph"""
         try:
+            # Get latest value from input field in case tracing missed it
+            self.THE_GRAPH_API_KEY = self.api_key_var.get().strip()
+
             if not self.THE_GRAPH_API_KEY:
                 print("Error: The Graph API Key is not set")
                 return None
