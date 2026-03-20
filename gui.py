@@ -84,7 +84,7 @@ class PolymarketTrackerGUI(ctk.CTk):
             header_frame,
             textvariable=self.gateway_var,
             width=400,
-            placeholder_text="https://gateway.thegraph.com/api"
+            placeholder_text="https://gateway.thegraph.com/api (from thegraph.market dashboard)"
         )
         self.gateway_entry.grid(row=1, column=2, padx=10, pady=(5, 10))
 
